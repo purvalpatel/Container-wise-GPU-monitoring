@@ -18,22 +18,31 @@ if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
 fi
 
 my_pids=$(nvidia-smi | sed '1,/Processes:/d' | awk '{print $5}' | grep -v 'PID' | grep -v '|' | awk '!NF || !seen[$0]++')
+docker ps --format "{{.Names}}" | awk '{print "echo name "$1"; docker top "$1}' | sh >>/tmp/.full_cpid_detail.txt
 
 for pid in $my_pids; do
-	p2g_util=$(nvidia-smi pmon -c 1 | grep $pid | awk '{print $1, $2, $4, $5}')
+	p2g_util=$(nvidia-smi pmon -c 1 | grep "$pid" | awk '{print $1, $2, $4, $5}' | head -1)
 	if [ ! -n "$p2g_util" ]; then
 		p2g_util="0 0 0 0"
 	fi
 	#echo -e $p2g_util
-    	p2g_usage=$(nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv | grep $pid | awk '{print $3, $4}')
+    	p2g_usage=$(nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv | grep "$pid" | awk '{print $3, $4}' | awk '{sum += $1} END {print sum ""}')
 	if [ ! -n "$p2g_usage" ]; then
-		p2g_usage=$(python3 get_memory_MIG.py $pid)
+		p2g_usage=$(python3 /home/script/docker_container_gpu_exporter/get_memory_MIG.py "$pid")
 		if [ ! -n "$p2g_usage" ]; then
 			p2g_usage="0 MiB"
 		fi
 	fi
-	#echo -e $p2g_usage
-	p2c=$(docker ps --format "{{.Names}}" | awk '{print "echo name "$1"; docker top "$1}' | sh | awk -v PID="$pid" 'BEGIN{split(PID,pids," ")}{if (NF==2 && $1=="name") name=$2; for(pid in pids){pid=pids[pid];if (NF>2 && $2==pid) print "CONTAINER_NAME: "name"\n"}}')
+
+	p2c=$(cat /tmp/.full_cpid_detail.txt | awk -v PID="$pid" 'BEGIN{split(PID,pids," ")}{if (NF==2 && $1=="name") name=$2; for(pid in pids){pid=pids[pid];if (NF>2 && $2==pid) print "CONTAINER_NAME: "name"\n"}}')
+#	p2c=$(docker ps --format "{{.Names}}" | awk '{print "echo name "$1"; docker top "$1}' | sh | awk -v PID="$pid" 'BEGIN{split(PID,pids," ")}{if (NF==2 && $1=="name") name=$2; for(pid in pids){pid=pids[pid];if (NF>2 && $2==pid) print "CONTAINER_NAME: "name"\n"}}')
+	if [ ! -n "$p2c" ]; then
+		p2c=$(ps -eo pid,user:32,comm | grep -i $pid | awk '{print$2} END {print sum ""}')
+		p2c="CONTAINER_NAME: $p2c"
+		if [ ! -n $p2c ]; then
+			p2c="NA"
+		fi
+	fi
 	echo "$p2c,$p2g_util,$p2g_usage,$pid" >>/tmp/.cinfo.txt 
 
 done
@@ -95,3 +104,4 @@ done
 
 rm /tmp/.container_info.txt
 rm /tmp/.cinfo.txt
+rm /tmp/.full_cpid_detail.txt
