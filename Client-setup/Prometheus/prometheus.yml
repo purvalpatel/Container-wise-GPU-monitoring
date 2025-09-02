@@ -1,0 +1,65 @@
+global:
+  scrape_interval: 120s
+  evaluation_interval: 120s
+  external_labels:
+    monitor: 'my-project'
+
+scrape_configs:
+  - job_name: 'prometheus-23'
+    scrape_interval: 120s
+    static_configs:
+      - targets:
+          - '10.10.110.23:39090'
+
+  - job_name: 'node_exporter'
+    scrape_interval: 30s
+    scrape_timeout: 30s
+    static_configs:
+      - targets:
+          - '10.10.110.23:9101'
+
+  - job_name: 'cadvisor'
+    scrape_interval: 30s
+    scrape_timeout: 30s
+    static_configs:
+      - targets:
+          - '10.10.110.23:8081'
+
+  - job_name: 'docker_container_gpu_metrics'
+    scrape_interval: 60s
+    scrape_timeout: 60s
+    static_configs:
+      - targets:
+          - '10.10.110.23:9088'
+
+  - job_name: 'nvidia_smi_exporter'
+    scrape_interval: 30s
+    scrape_timeout: 30s
+    static_configs:
+      - targets:
+          - '10.10.110.23:9834'
+
+  - job_name: 'nvidia_dcgm_exporter-23'
+    scrape_interval: 30s
+    scrape_timeout: 30s
+    static_configs:
+      - targets:
+          - '10.10.110.23:9400'
+
+  - job_name: 'du_exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '10.10.110.23:9777'
+
+ # - job_name: 'loki'
+ #   scrape_interval: 30s
+ #   static_configs:
+ #     - targets:
+ #         - '10.10.110.23:3101'
+
+ # - job_name: 'promtail'
+ #   scrape_interval: 30s
+ #   static_configs:
+ #     - targets:
+ #         - '10.10.110.23:9080'

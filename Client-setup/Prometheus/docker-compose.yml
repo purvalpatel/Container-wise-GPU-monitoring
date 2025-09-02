@@ -1,0 +1,147 @@
+version: "3.8"
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-23
+    restart: always
+    ports:
+      - "39090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /mnt/nvme_disk1/docker/:/var/lib/docker:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidia1:/dev/nvidia1
+      - /dev/nvidia2:/dev/nvidia2
+      - /dev/nvidia3:/dev/nvidia3
+      - /dev/nvidia4:/dev/nvidia4
+      - /dev/nvidia5:/dev/nvidia5
+      - /dev/nvidia6:/dev/nvidia6
+      - /dev/nvidia7:/dev/nvidia7
+    privileged: true
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+#  nvidia-dcgm-exporter:
+#    image: nvidia/dcgm-exporter:latest
+#    container_name: dcgm-exporter
+#    restart: unless-stopped
+#    ports:
+#      - "9400:9400"
+#    privileged: true
+#    volumes:
+#      - /var/run:/var/run:rw
+#      - /etc/nvidia-container-runtime/host-files-for-container.d:/etc/nvidia-container-runtime/host-files-for-container.d:ro
+#      - /dev:/run/dev  # Important for MIG
+#    environment:
+#      - NVIDIA_VISIBLE_DEVICES=all
+#      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,display
+#      - DCGM_EXPORTER_COLLECTORS=/etc/dcgm-exporter/dcp-metrics-included.csv
+#      - DCGM_EXPORTER_INTERVAL=1000
+
+  nvidia-dcgm-exporter:
+    image: nvidia/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
+#    image: nvidia/dcgm-exporter:latest
+    container_name: dcgm-exporter
+    runtime: nvidia
+    privileged: true
+    environment:
+      - DCGM_EXPORTER_INTERVAL=1000
+      - DCGM_EXPORTER_LISTEN=:9400
+      - DCGM_EXPORTER_ENABLE_MIG=1
+    ports:
+      - "9400:9400"
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9101:9100"
+    volumes:
+      - /:/host:ro,rslave
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^$'
+      - '--collector.filesystem.ignored-fs-types=^$'
+
+  nvidia_smi_exporter:
+    image: utkuozdemir/nvidia_gpu_exporter:1.1.0
+    container_name: nvidia_smi_exporter
+    restart: unless-stopped
+    devices:
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia0:/dev/nvidia0
+    volumes:
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so:ro
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+    ports:
+      - "9834:9835"
+
+  du_exporter:
+    image: deziss/du_exporter:v0.6.0
+    container_name: du_exporter
+    restart: unless-stopped
+    volumes:
+      - /mnt/nvme_disk1/docker/containers:/containers:ro
+      - disk-usage-data:/du_exporter
+    ports:
+      - "9777:9995"
+
+#  promtail:
+#    image: grafana/promtail:latest
+#    container_name: promtail
+#    volumes:
+#      - /var/log:/var/log:ro
+#      - /mnt/nvme_disk1/docker/containers:/var/lib/docker/containers:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#      - ./promtail.yaml:/etc/promtail/config.yaml:ro
+#    command:
+#      - '--config.file=/etc/promtail/config.yaml'
+#    depends_on:
+#      - loki
+#    restart: always
+
+#  loki:
+#    image: grafana/loki:latest
+#    container_name: loki
+#    restart: always
+#    command:
+#      [
+#        "--validation.discover-service-name=[]",
+#        "--validation.discover-log-levels=false",
+#        "-config.file=/etc/loki/config.yaml"
+#      ]
+#    volumes:
+#      - ./loki.yaml:/etc/loki/config.yaml:ro
+#    ports:
+#      - "3101:3100"
+
+volumes:
+  prometheus-data:
+  disk-usage-data:

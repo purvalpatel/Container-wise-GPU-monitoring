@@ -1,0 +1,66 @@
+server:
+  http_listen_port: 9080  # Promtail's HTTP port for Prometheus scraping
+#  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push  # Loki endpoint
+
+scrape_configs:
+  - job_name: 'system'
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          __path__: /var/log/*.log
+
+  # Scrape Docker logs
+  - job_name: 'docker-logs'
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*.log
+    pipeline_stages:  # Add pipeline stages for Docker
+      - json:
+          expressions:
+            container: container
+            log: log
+            stream: stream
+      - labels:
+         container: container
+         stream: stream
+
+  - job_name: 'd-docker-logs'
+    docker_sd_configs:  # Dynamic Docker discovery
+    - host: unix:///var/run/docker.sock
+      refresh_interval: 30s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        target_label: 'container'
+      - source_labels: ['__meta_docker_image']
+        target_label: 'image'
+      - source_labels: ['__meta_docker_container_id']
+        target_label: 'container_id'
+      - source_labels: ['__meta_docker_container_id']
+        target_label: '__path__'
+        replacement: '/var/lib/docker/containers/*/*.log'  # Custom Docker log path
+    pipeline_stages:
+      # First, parse the JSON structure in Docker logs
+      - json:
+          expressions:
+            log: log         # Extract the log field
+            stream: stream   # Extract the stream field (stdout or stderr)
+            container: container  # Extract the container field
+            time: time       # Extract the timestamp field if present
+      # Optionally, add labels based on the parsed fields
+      - labels:
+          container: container    # Add 'container' as a label
+          stream: stream          # Add 'stream' as a label (stdout or stderr)
+      # Optional: You can add more stages depending on your log structure
+      # - timestamp:
+      #     format: "2006-01-02T15:04:05.999999999Z"  # Example timestamp format

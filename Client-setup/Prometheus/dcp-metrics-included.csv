@@ -1,0 +1,7 @@
+DCGM_FI_PROF_MIG_I_UTILIZATION,gauge,MIG compute instance utilization (%)
+DCGM_FI_PROF_MIG_MEM_COPY_UTILIZATION,gauge,MIG memory copy utilization (%)
+DCGM_FI_PROF_MIG_PCIE_TX_THROUGHPUT,gauge,MIG PCIe transmit throughput (MB/s)
+DCGM_FI_PROF_MIG_PCIE_RX_THROUGHPUT,gauge,MIG PCIe receive throughput (MB/s)
+DCGM_FI_PROF_MIG_POWER_USAGE,gauge,MIG power usage (W)
+DCGM_FI_PROF_MIG_GPU_UTILIZATION,gauge,MIG GPU utilization (%)
+DCGM_FI_PROF_MIG_MEM_UTILIZATION,gauge,MIG memory utilization (%)
